@@ -78,6 +78,12 @@ const Item = (props: IItemProps): ReactElement => {
 };
 
 const Tree = (): ReactElement => {
+    // const sendMessage = () => {
+    //     if (ws) {
+    //         ws.send(JSON.stringify({ type: "assetRequest", assetId: }));
+    //     }
+    // };
+
     const { status, data } = useQuery({
         queryKey: ["generate_tree"],
         queryFn: async (): Promise<AxiosResponse<Space[]>> =>

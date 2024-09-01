@@ -1,5 +1,7 @@
 "use client";
 
+import { DataProvider } from "@/contexts/dataContext";
+import { WebSocketProvider } from "@/contexts/webSocketContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactElement } from "react";
 
@@ -10,5 +12,11 @@ export default function ProvidersWrapper({
 }: {
     children: React.ReactNode;
 }): ReactElement {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    return (
+        <DataProvider>
+            <WebSocketProvider>
+                <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+            </WebSocketProvider>
+        </DataProvider>
+    );
 }
