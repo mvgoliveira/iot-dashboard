@@ -5,6 +5,7 @@ import { ReactElement } from "react";
 import StyledComponentsRegistry from "../lib/registry";
 import ClientThemeWrapper from "./client-theme-wrapper";
 import { inter, space } from "./fonts";
+import ProvidersWrapper from "./providers-wrapper";
 
 export const metadata: Metadata = {
     title: "Monitor - Dashboard",
@@ -19,9 +20,11 @@ export default function RootLayout({
     return (
         <html lang="pt-br">
             <body className={`${inter.className} ${space.className}`}>
-                <StyledComponentsRegistry>
-                    <ClientThemeWrapper>{children}</ClientThemeWrapper>
-                </StyledComponentsRegistry>
+                <ProvidersWrapper>
+                    <StyledComponentsRegistry>
+                        <ClientThemeWrapper>{children}</ClientThemeWrapper>
+                    </StyledComponentsRegistry>
+                </ProvidersWrapper>
             </body>
         </html>
     );

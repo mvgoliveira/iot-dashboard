@@ -1,10 +1,12 @@
+import { DualSpinning } from "@/components/loading/dualSpinning";
 import { Tree as RadixTree } from "@/components/tree";
 import { Typography } from "@/components/typography";
 import { UrlQueryControl } from "@/utils/urlQueryControl";
+import { useQuery } from "@tanstack/react-query";
+import axios, { AxiosResponse } from "axios";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { ReactElement, useEffect, useState } from "react";
 import { MdWorkspaces } from "react-icons/md";
-import { v4 as uuid } from "uuid";
 
 import { Root, Header, Content } from "./styles";
 
@@ -16,46 +18,6 @@ interface IItemProps {
     metadata: any;
     childs: IItemProps[] | [];
 }
-
-type Space = {
-    name: string;
-    assets: [
-        {
-            name: string;
-            temperature: {
-                mac: string;
-                value: number;
-                status: string;
-            };
-            energies: {
-                name: string;
-                type: string;
-                status: string;
-            }[];
-        },
-    ];
-};
-
-const SPACES: Space[] = [
-    {
-        name: "Casa do Marcelo",
-        assets: [
-            {
-                name: "quarto",
-                temperature: {
-                    value: 30,
-                    mac: "87236726384ADG",
-                    status: "normal",
-                },
-                energies: [
-                    { type: "tomada", name: "tomada cama", status: "on" },
-                    { type: "tomada", name: "tomada cama", status: "on" },
-                    { type: "tomada", name: "tomada cama", status: "on" },
-                ],
-            },
-        ],
-    },
-];
 
 const Item = (props: IItemProps): ReactElement => {
     const router = useRouter();
@@ -83,6 +45,10 @@ const Item = (props: IItemProps): ReactElement => {
                 {
                     key: "assetId",
                     value: props.id,
+                },
+                {
+                    key: "mac",
+                    value: props.metadata.temperature.mac,
                 },
             ]),
             undefined
@@ -112,12 +78,18 @@ const Item = (props: IItemProps): ReactElement => {
 };
 
 const Tree = (): ReactElement => {
+    const { status, data } = useQuery({
+        queryKey: ["generate_tree"],
+        queryFn: async (): Promise<AxiosResponse<Space[]>> =>
+            axios.get("http://localhost:4000/spaces"),
+    });
+
     const [rootTree, setRootTree] = useState<IItemProps[] | []>([]);
 
     const convertToTreeItems = (spaces: Space[]): IItemProps[] => {
         const spacesItems: IItemProps[] = spaces.map(space => {
             const assetItems: IItemProps[] = space.assets.map(asset => ({
-                id: uuid(),
+                id: asset.id,
                 type: "asset",
                 name: asset.name,
                 icon: "asset",
@@ -126,7 +98,7 @@ const Tree = (): ReactElement => {
             }));
 
             return {
-                id: uuid(),
+                id: space.id,
                 type: "space",
                 name: space.name,
                 icon: "space",
@@ -141,7 +113,7 @@ const Tree = (): ReactElement => {
     useEffect((): void => {
         (async (): Promise<void> => {
             try {
-                const response: Space[] = SPACES;
+                const response: Space[] = data?.data || [];
 
                 const spacesAndAssets: IItemProps[] = convertToTreeItems(response);
 
@@ -150,7 +122,7 @@ const Tree = (): ReactElement => {
                 console.error(err);
             }
         })();
-    }, []);
+    }, [data]);
 
     return (
         <Root>
@@ -164,7 +136,25 @@ const Tree = (): ReactElement => {
             </Header>
 
             <Content>
-                {rootTree?.map((item: IItemProps) => <Item {...item} key={item.id} />)}
+                {status === "pending" && <DualSpinning />}
+
+                {status === "error" && (
+                    <Typography
+                        tag="span"
+                        color="gray30"
+                        fontSize={{ xs: "fs100" }}
+                        fontWeight="bold"
+                        textAlign="center"
+                    >
+                        Aconteceu um erro inesperado!
+                        <br />
+                        Tente novamente mais tarde!
+                    </Typography>
+                )}
+
+                {status !== "error" &&
+                    status !== "pending" &&
+                    rootTree?.map((item: IItemProps) => <Item {...item} key={item.id} />)}
             </Content>
         </Root>
     );

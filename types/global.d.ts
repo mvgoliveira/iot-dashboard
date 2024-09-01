@@ -21,4 +21,44 @@ declare global {
         shadowHeight?: string;
         maxWidth?: string;
     };
+
+    export type Space = {
+        id: string;
+        name: string;
+        assets: [
+            {
+                id: string;
+                spaceId: string;
+                name: string;
+                temperature: {
+                    mac: string;
+                    value: number;
+                    status: string;
+                };
+                energies: {
+                    name: string;
+                    id: string;
+                    type: "lampada" | "tomada";
+                    status: "on" | "off";
+                }[];
+            },
+        ];
+    };
+
+    export type Asset = {
+        id: string;
+        spaceId: string;
+        name: string;
+        temperature: {
+            mac: string;
+            value: number;
+            status: string;
+        };
+        energies: {
+            name: string;
+            id: string;
+            type: "lampada" | "tomada";
+            status: "on" | "off";
+        }[];
+    };
 }
