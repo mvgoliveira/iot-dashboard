@@ -2,71 +2,89 @@ import GaugeChart from "@/components/gauge/default";
 import { DualSpinning } from "@/components/loading/dualSpinning";
 import { Tooltip } from "@/components/tooltip";
 import { Typography } from "@/components/typography";
+import { useData } from "@/contexts/dataContext";
+import { useWebSocket } from "@/contexts/webSocketContext";
 import { Theme } from "@/themes/Theme";
-import { useQuery } from "@tanstack/react-query";
-import axios, { AxiosResponse } from "axios";
 import { useSearchParams } from "next/navigation";
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import { FaInfoCircle } from "react-icons/fa";
 
 import { Root, GaugeContainer, GaugeTitle, SecondaryRoot, ErrorMessage } from "./styles";
 
-const PROGRESS_ZONES = [
-    { percentageLimit: 20, color: Theme.colors.cyan300 },
-    { percentageLimit: 80, color: Theme.colors.greenA400 },
-    { percentageLimit: 100, color: Theme.colors.redA400 },
-];
-
-const getProgress = (value: number): number => {
-    let limMin = PROGRESS_ZONES[0].percentageLimit;
-    let limMax = PROGRESS_ZONES[1].percentageLimit;
-
-    let temperatureOffsetMin = 18;
-    let temperatureOffsetMax = 28;
-
-    if (value < temperatureOffsetMin) {
-        limMin = 0;
-        limMax = PROGRESS_ZONES[0].percentageLimit;
-
-        temperatureOffsetMax = temperatureOffsetMin;
-        temperatureOffsetMin = -10;
-    }
-
-    if (value > temperatureOffsetMax) {
-        limMin = PROGRESS_ZONES[1].percentageLimit;
-        limMax = 100;
-
-        temperatureOffsetMin = temperatureOffsetMax;
-        temperatureOffsetMax = 50;
-    }
-
-    const progress =
-        limMin +
-        ((value - temperatureOffsetMin) / (temperatureOffsetMax - temperatureOffsetMin)) *
-            (limMax - limMin);
-
-    if (progress < 1) {
-        return 1;
-    }
-
-    if (progress > 100) {
-        return 100;
-    }
-
-    return progress;
-};
-
 const Gauge = (): ReactNode => {
+    const [progressData, setProgressData] = useState<number>(0);
+    const { temperatureOffsets, temperature, setTemperature } = useData();
     const searchParams = useSearchParams();
     const assetId = searchParams.get("assetId");
+    const [status, setStatus] = useState("pending");
 
-    const { status, data } = useQuery({
-        queryKey: ["asset", assetId],
-        queryFn: async (): Promise<AxiosResponse<Asset>> =>
-            axios.get(`http://localhost:4000/assets/${assetId}`),
-    });
+    const { ws, isConnected } = useWebSocket();
 
-    if (status === "pending") {
+    const PROGRESS_ZONES = [
+        { percentageLimit: 20, color: Theme.colors.cyan300 },
+        { percentageLimit: 80, color: Theme.colors.greenA400 },
+        { percentageLimit: 100, color: Theme.colors.redA400 },
+    ];
+
+    useEffect(() => {
+        if (isConnected && ws && assetId) {
+            setTemperature(null);
+            setStatus("pending");
+            ws.send(JSON.stringify({ type: "temperatureRequest", assetId }));
+        }
+    }, [ws, isConnected, assetId]);
+
+    useEffect(() => {
+        try {
+            if (temperatureOffsets && assetId && temperature) {
+                let offsetMin = temperatureOffsets.min;
+                let offsetMax = temperatureOffsets.max;
+
+                let limMin = PROGRESS_ZONES[0].percentageLimit;
+                let limMax = PROGRESS_ZONES[1].percentageLimit;
+
+                if (temperature < offsetMin) {
+                    limMin = 0;
+                    limMax = PROGRESS_ZONES[0].percentageLimit;
+
+                    offsetMax = offsetMin;
+                    offsetMin = -10;
+                } else if (temperature > offsetMax) {
+                    limMin = PROGRESS_ZONES[1].percentageLimit;
+                    limMax = 100;
+
+                    offsetMin = offsetMax;
+                    offsetMax = 50;
+                }
+
+                const progress =
+                    limMin +
+                    ((temperature - offsetMin) / (offsetMax - offsetMin)) * (limMax - limMin);
+
+                if (progress < 1) {
+                    setProgressData(1);
+                }
+
+                if (progress > 100) {
+                    setProgressData(100);
+                }
+
+                setProgressData(progress);
+
+                setStatus("normal");
+            }
+        } catch (err) {
+            setStatus("error");
+            console.error(err);
+        }
+
+        return () => {
+            setProgressData(0);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [temperatureOffsets, assetId, temperature]);
+
+    if (!temperature || status === "pending") {
         return (
             <SecondaryRoot>
                 <div style={{ height: "100%" }}>
@@ -76,7 +94,7 @@ const Gauge = (): ReactNode => {
         );
     }
 
-    if (status === "error") {
+    if (!assetId || status === "error") {
         return (
             <SecondaryRoot>
                 <Typography
@@ -101,13 +119,10 @@ const Gauge = (): ReactNode => {
                     <GaugeChart size={190}>
                         <GaugeChart.External progressZones={PROGRESS_ZONES} />
                         <GaugeChart.Internal
-                            progress={getProgress(data.data.temperature.value)}
+                            progress={progressData}
                             progressZones={PROGRESS_ZONES}
                         />
-                        <GaugeChart.Value
-                            title={data.data.temperature.value.toFixed(1)}
-                            subtitle="ºC"
-                        />
+                        <GaugeChart.Value title={temperature.toFixed(1) || ""} subtitle="ºC" />
                     </GaugeChart>
                 </div>
 
@@ -132,7 +147,7 @@ const Gauge = (): ReactNode => {
             </GaugeContainer>
 
             <GaugeContainer gridArea="1 / 2 / 1 / 2">
-                {data.data.temperature.status === "high" && (
+                {temperature > temperatureOffsets.max && (
                     <ErrorMessage bgColor="red500">
                         <Typography
                             tag="h3"
@@ -153,7 +168,7 @@ const Gauge = (): ReactNode => {
                     </ErrorMessage>
                 )}
 
-                {data.data.temperature.status === "low" && (
+                {temperature < temperatureOffsets.min && (
                     <ErrorMessage bgColor="cyanA400">
                         <Typography
                             tag="h3"
@@ -190,7 +205,7 @@ const Gauge = (): ReactNode => {
                         fontWeight="regular"
                         fontSize={{ xs: "fs75" }}
                     >
-                        18ºC
+                        {temperatureOffsets.min}ºC
                     </Typography>
                 </div>
 
@@ -210,7 +225,7 @@ const Gauge = (): ReactNode => {
                         fontWeight="regular"
                         fontSize={{ xs: "fs75" }}
                     >
-                        28ºC
+                        {temperatureOffsets.max}ºC
                     </Typography>
                 </div>
             </GaugeContainer>

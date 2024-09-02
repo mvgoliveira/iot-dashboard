@@ -2,11 +2,11 @@ import { DualSpinning } from "@/components/loading/dualSpinning";
 import { Tag } from "@/components/tag";
 import { Tooltip } from "@/components/tooltip";
 import { Typography } from "@/components/typography";
+import { useData } from "@/contexts/dataContext";
+import { useWebSocket } from "@/contexts/webSocketContext";
 import { Theme } from "@/themes/Theme";
-import { useQuery } from "@tanstack/react-query";
-import axios, { AxiosResponse } from "axios";
 import { useSearchParams } from "next/navigation";
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import { FaInfoCircle } from "react-icons/fa";
 
 import { Root, TagContainer, DetailsContainer, SecondaryRoot } from "./styles";
@@ -15,11 +15,37 @@ const Asset = (): ReactNode => {
     const searchParams = useSearchParams();
     const assetId = searchParams.get("assetId");
 
-    const { status, data } = useQuery({
-        queryKey: ["asset", assetId],
-        queryFn: async (): Promise<AxiosResponse<Asset>> =>
-            axios.get(`http://localhost:4000/assets/${assetId}`),
-    });
+    const { asset } = useData();
+
+    const [status, setStatus] = useState("pending");
+
+    const { ws, isConnected } = useWebSocket();
+
+    useEffect(() => {
+        if (isConnected && ws && assetId) {
+            setStatus("pending");
+            ws.send(JSON.stringify({ type: "assetRequest", assetId }));
+        }
+    }, [ws, isConnected, assetId]);
+
+    useEffect(() => {
+        try {
+            if (asset) {
+                setStatus("normal");
+            }
+        } catch (err) {
+            setStatus("error");
+            console.error(err);
+        }
+    }, [asset]);
+
+    if (status === "pending") {
+        return (
+            <SecondaryRoot>
+                <DualSpinning />
+            </SecondaryRoot>
+        );
+    }
 
     if (!assetId || status === "error") {
         return (
@@ -39,17 +65,9 @@ const Asset = (): ReactNode => {
         );
     }
 
-    if (status === "pending") {
-        return (
-            <SecondaryRoot>
-                <DualSpinning />
-            </SecondaryRoot>
-        );
-    }
-
     return (
         <Root>
-            {data && (
+            {asset && (
                 <>
                     <div
                         style={{
@@ -66,7 +84,7 @@ const Asset = (): ReactNode => {
                             fontWeight="bold"
                         >
                             <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                {data.data.name ?? "Hidrômetro"}
+                                {asset.name ?? "Hidrômetro"}
                                 <Tooltip>
                                     <Tooltip.Trigger>
                                         <FaInfoCircle size={16} color={Theme.colors.gray30} />
@@ -101,7 +119,7 @@ const Asset = (): ReactNode => {
                                 fontSize={{ xs: "fs75" }}
                                 fontWeight="regular"
                             >
-                                <strong>Dispositivos:</strong> {data.data.energies.length + 1}{" "}
+                                <strong>Dispositivos:</strong> {asset.energies.length + 1}{" "}
                                 cadastrados
                             </Typography>
                         </div>

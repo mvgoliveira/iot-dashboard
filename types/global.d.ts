@@ -22,27 +22,11 @@ declare global {
         maxWidth?: string;
     };
 
-    export type Space = {
-        id: string;
+    export type Energy = {
         name: string;
-        assets: [
-            {
-                id: string;
-                spaceId: string;
-                name: string;
-                temperature: {
-                    mac: string;
-                    value: number;
-                    status: string;
-                };
-                energies: {
-                    name: string;
-                    id: string;
-                    type: "lampada" | "tomada";
-                    status: "on" | "off";
-                }[];
-            },
-        ];
+        id: string;
+        type: "lampada" | "tomada";
+        status: "on" | "off";
     };
 
     export type Asset = {
@@ -54,11 +38,12 @@ declare global {
             value: number;
             status: string;
         };
-        energies: {
-            name: string;
-            id: string;
-            type: "lampada" | "tomada";
-            status: "on" | "off";
-        }[];
+        energies: Energy[];
+    };
+
+    export type Space = {
+        id: string;
+        name: string;
+        assets: Asset[];
     };
 }

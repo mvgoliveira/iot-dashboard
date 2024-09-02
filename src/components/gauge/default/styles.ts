@@ -112,6 +112,6 @@ export const Circle = styled.circle<{
     progressColor: string;
 }>`
     stroke-dashoffset: calc(440 - (220 * ${({ progress }) => progress}) / 100);
-
     stroke: ${({ progressColor }) => progressColor};
+    transition: stroke-dashoffset 2s ease-out;
 `;

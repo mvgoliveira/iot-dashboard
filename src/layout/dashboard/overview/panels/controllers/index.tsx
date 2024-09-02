@@ -1,23 +1,38 @@
 import { EnergyControl } from "@/components/energyControl";
 import { DualSpinning } from "@/components/loading/dualSpinning";
 import { Typography } from "@/components/typography";
-import { useQuery } from "@tanstack/react-query";
-import axios, { AxiosResponse } from "axios";
+import { useData } from "@/contexts/dataContext";
+import { useWebSocket } from "@/contexts/webSocketContext";
 import { useSearchParams } from "next/navigation";
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 
 import { Root, BoxContainer, SecondaryRoot } from "./styles";
 
 const Controllers = (): ReactNode => {
     const searchParams = useSearchParams();
     const assetId = searchParams.get("assetId");
+    const { energies } = useData();
+    const [status, setStatus] = useState("pending");
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { status, data } = useQuery({
-        queryKey: ["asset", assetId],
-        queryFn: async (): Promise<AxiosResponse<Asset>> =>
-            axios.get(`http://localhost:4000/assets/${assetId}`),
-    });
+    const { ws, isConnected } = useWebSocket();
+
+    useEffect(() => {
+        if (isConnected && ws && assetId) {
+            setStatus("pending");
+            ws.send(JSON.stringify({ type: "energiesRequest", assetId }));
+        }
+    }, [ws, isConnected, assetId]);
+
+    useEffect(() => {
+        try {
+            if (energies) {
+                setStatus("normal");
+            }
+        } catch (err) {
+            setStatus("error");
+            console.error(err);
+        }
+    }, [energies]);
 
     if (status === "pending") {
         return (
@@ -50,14 +65,15 @@ const Controllers = (): ReactNode => {
     return (
         <Root>
             <BoxContainer>
-                {data.data.energies.map(energy => (
-                    <EnergyControl
-                        name={energy.name}
-                        id={energy.id}
-                        defaultState={energy.status}
-                        type={energy.type}
-                    />
-                ))}
+                {energies &&
+                    energies.map(energy => (
+                        <EnergyControl
+                            name={energy.name}
+                            id={energy.id}
+                            defaultState={energy.status}
+                            type={energy.type}
+                        />
+                    ))}
             </BoxContainer>
         </Root>
     );

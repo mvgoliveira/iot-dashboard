@@ -1,9 +1,9 @@
 import { DualSpinning } from "@/components/loading/dualSpinning";
 import { Tree as RadixTree } from "@/components/tree";
 import { Typography } from "@/components/typography";
+import { useData } from "@/contexts/dataContext";
+import { useWebSocket } from "@/contexts/webSocketContext";
 import { UrlQueryControl } from "@/utils/urlQueryControl";
-import { useQuery } from "@tanstack/react-query";
-import axios, { AxiosResponse } from "axios";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { ReactElement, useEffect, useState } from "react";
 import { MdWorkspaces } from "react-icons/md";
@@ -78,17 +78,9 @@ const Item = (props: IItemProps): ReactElement => {
 };
 
 const Tree = (): ReactElement => {
-    // const sendMessage = () => {
-    //     if (ws) {
-    //         ws.send(JSON.stringify({ type: "assetRequest", assetId: }));
-    //     }
-    // };
-
-    const { status, data } = useQuery({
-        queryKey: ["generate_tree"],
-        queryFn: async (): Promise<AxiosResponse<Space[]>> =>
-            axios.get("http://localhost:4000/spaces"),
-    });
+    const { spaces: spacesData } = useData();
+    const { ws, isConnected } = useWebSocket();
+    const [status, setStatus] = useState("pending");
 
     const [rootTree, setRootTree] = useState<IItemProps[] | []>([]);
 
@@ -117,18 +109,27 @@ const Tree = (): ReactElement => {
     };
 
     useEffect((): void => {
+        setStatus("pending");
         (async (): Promise<void> => {
             try {
-                const response: Space[] = data?.data || [];
+                if (spacesData) {
+                    const spacesAndAssets: IItemProps[] = convertToTreeItems(spacesData);
+                    setRootTree(spacesAndAssets);
+                }
 
-                const spacesAndAssets: IItemProps[] = convertToTreeItems(response);
-
-                setRootTree(spacesAndAssets);
+                setStatus("normal");
             } catch (err) {
+                setStatus("error");
                 console.error(err);
             }
         })();
-    }, [data]);
+    }, [spacesData]);
+
+    useEffect(() => {
+        if (isConnected && ws) {
+            ws.send(JSON.stringify({ type: "spacesRequest" }));
+        }
+    }, [ws, isConnected]);
 
     return (
         <Root>

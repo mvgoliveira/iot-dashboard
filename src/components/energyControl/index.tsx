@@ -1,9 +1,11 @@
 import { Switch } from "@/components/switch";
 import { Typography } from "@/components/typography";
+import { useWebSocket } from "@/contexts/webSocketContext";
 import { Theme } from "@/themes";
+import { useSearchParams } from "next/navigation";
 import React, { ReactElement, useEffect, useState } from "react";
 import { HiLightBulb } from "react-icons/hi";
-import { MdLightbulbOutline, MdPower, MdPowerOff } from "react-icons/md";
+import { MdLightbulbOutline, MdOutlinePowerOff, MdPower } from "react-icons/md";
 
 import { Container, IconContainer, TitleContainer } from "./styles";
 
@@ -16,6 +18,11 @@ type PropTypes = {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const EnergyControl = ({ defaultState, name, id, type }: PropTypes): ReactElement => {
+    const searchParams = useSearchParams();
+    const assetId = searchParams.get("assetId");
+
+    const { ws, isConnected } = useWebSocket();
+
     const [state, setState] = useState<"on" | "off">("off");
 
     useEffect(() => {
@@ -29,7 +36,12 @@ const EnergyControl = ({ defaultState, name, id, type }: PropTypes): ReactElemen
     }, [defaultState]);
 
     const onStateChange = (checked: boolean) => {
-        setState(checked ? "on" : "off");
+        const status = checked ? "on" : "off";
+
+        if (ws && isConnected)
+            ws.send(JSON.stringify({ type: "changeEnergyRequest", assetId, energyId: id, status }));
+
+        setState(status);
     };
 
     return (
@@ -49,7 +61,7 @@ const EnergyControl = ({ defaultState, name, id, type }: PropTypes): ReactElemen
                             {state === "on" ? (
                                 <MdPower color={Theme.colors.white} size={20} />
                             ) : (
-                                <MdPowerOff color={Theme.colors.white} size={20} />
+                                <MdOutlinePowerOff color={Theme.colors.white} size={20} />
                             )}
                         </>
                     )}

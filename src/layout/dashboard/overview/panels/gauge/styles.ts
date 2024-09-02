@@ -13,7 +13,7 @@ export const Root = styled.section`
 
 export const SecondaryRoot = styled.section`
     width: 100%;
-    height: 502px;
+    height: 280px;
     background: ${({ theme }) => theme.colors.gray80};
     display: flex;
     align-items: center;
