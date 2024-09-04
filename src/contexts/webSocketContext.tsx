@@ -20,44 +20,51 @@ export const WebSocketProvider: React.FC<IWebSocketProviderProps> = ({ children 
     const [isConnected, setIsConnected] = useState<boolean>(false);
 
     useEffect(() => {
-        ws.current = new WebSocket("ws://localhost:8080");
+        const connectWebSocket = () => {
+            ws.current = new WebSocket("ws://localhost:8080");
 
-        ws.current.onopen = () => {
-            console.log("WebSocket connected");
-            setIsConnected(true);
-        };
+            ws.current.onopen = () => {
+                console.log("WebSocket connected");
+                setIsConnected(true);
+            };
 
-        ws.current.onclose = () => {
-            console.log("WebSocket disconnected");
-            setIsConnected(false);
-        };
+            ws.current.onclose = () => {
+                console.log("WebSocket disconnected");
+                setIsConnected(false);
+                setTimeout(() => {
+                    console.log("Reconnecting WebSocket...");
+                    connectWebSocket();
+                }, 3000); // Tenta reconectar após 3 segundos
+            };
 
-        ws.current.onmessage = event => {
-            const data = JSON.parse(event.data);
+            ws.current.onmessage = event => {
+                const data = JSON.parse(event.data);
 
-            if (data.type === "spacesResponse") {
-                setSpaces(data.data);
-            }
-
-            if (data.type === "assetResponse") {
-                setAsset(data.data);
-            }
-
-            if (data.type === "temperatureResponse") {
-                if (data.data.value) {
-                    setTemperature(data.data.value);
+                if (data.type === "spacesResponse") {
+                    setSpaces(data.data);
                 }
-            }
 
-            if (data.type === "energiesResponse") {
-                setEnergies(data.data);
-            }
+                if (data.type === "assetResponse") {
+                    setAsset(data.data);
+                }
 
-            if (data.type === "changeEnergyResponse") {
-                console.log("changeEnergyResponse");
-                setNewEnergy(data.data);
-            }
+                if (data.type === "temperatureResponse") {
+                    if (data.data.value) {
+                        setTemperature(data.data.value);
+                    }
+                }
+
+                if (data.type === "energiesResponse") {
+                    setEnergies(data.data);
+                }
+
+                if (data.type === "changeEnergyResponse") {
+                    setNewEnergy(data.data);
+                }
+            };
         };
+
+        connectWebSocket();
 
         return () => {
             ws.current?.close();

@@ -27,7 +27,7 @@ const Gauge = (): ReactNode => {
     ];
 
     useEffect(() => {
-        if (isConnected && ws && assetId) {
+        if (isConnected && ws?.readyState === WebSocket.OPEN && assetId) {
             setTemperature(null);
             setStatus("pending");
             ws.send(JSON.stringify({ type: "temperatureRequest", assetId }));

@@ -17,7 +17,7 @@ const Controllers = (): ReactNode => {
     const { ws, isConnected } = useWebSocket();
 
     useEffect(() => {
-        if (isConnected && ws && assetId) {
+        if (isConnected && ws?.readyState === WebSocket.OPEN && assetId) {
             setStatus("pending");
             ws.send(JSON.stringify({ type: "energiesRequest", assetId }));
         }

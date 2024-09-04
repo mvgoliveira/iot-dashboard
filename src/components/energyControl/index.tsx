@@ -38,7 +38,7 @@ const EnergyControl = ({ defaultState, name, id, type }: PropTypes): ReactElemen
     const onStateChange = (checked: boolean) => {
         const status = checked ? "on" : "off";
 
-        if (ws && isConnected)
+        if (isConnected && ws?.readyState === WebSocket.OPEN)
             ws.send(JSON.stringify({ type: "changeEnergyRequest", assetId, energyId: id, status }));
 
         setState(status);

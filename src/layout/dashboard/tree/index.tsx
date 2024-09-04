@@ -126,7 +126,7 @@ const Tree = (): ReactElement => {
     }, [spacesData]);
 
     useEffect(() => {
-        if (isConnected && ws) {
+        if (isConnected && ws?.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: "spacesRequest" }));
         }
     }, [ws, isConnected]);
